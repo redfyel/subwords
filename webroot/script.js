@@ -4,13 +4,14 @@ class WordGuesserGame {
       this.story = "";
       this.gridContainer = document.getElementById("grid");
       this.message = document.getElementById("message");
-      
+       this.voteStatusPromise = null; // Promise to wait for voteStatus
+    this.voteStatusResolve = null; // Resolver for the Promise
       this.postId = null;
       this.username = 'Guest';
       this.cellSelections = {};
       this.currentCells = []; 
       this.gameRound = 1;  
-
+    this.canVote = ""
       this.channel = new BroadcastChannel('game_updates');
 
       this.initGame();
@@ -18,6 +19,7 @@ class WordGuesserGame {
 
   // Initialize game
   initGame() {
+    this.resetVoteStatusPromise();
     this.storyElement = document.getElementById("story");
     this.countdownElement = document.getElementById("countdown-timer");
     this.countdownInterval = null;
@@ -64,6 +66,18 @@ class WordGuesserGame {
                 this.storyElement.innerText = story;
                 this.showStoryCompletedScreen();
             }
+
+            if (message.type === "voteStatus") {
+            const { canVote } = message.data;
+            console.log("vote status sent by devvit:",canVote)
+            this.canVote = canVote;
+
+
+            if (this.voteStatusResolve) {
+              this.voteStatusResolve(canVote);
+              this.resetVoteStatusPromise(); // Reset for future uses
+            }
+          }
             
             if (message.type === 'updateGameCells') {
                 console.log("Received game cell update:", message);
@@ -92,30 +106,40 @@ class WordGuesserGame {
               }
           }
 
-          if(message.type === 'gameOver'){
+         if (message.type === "gameOver") {
             console.log("received game over message from channel", message);
 
-            const {finalStory} = message.data || {};
-            
-            if (finalStory) {
-              console.log('Update game round', finalStory);
+            const { story } = message.data || {};
+            console.log("final story is", story);
+            if (story) {
+              console.log("Update game round", story);
+              this.storyElement.innerText = story;
               this.showStoryCompletedScreen();
             }
-            
           }
 
             
 
-            if(message.type === 'updateTextField'){
-              console.log("Received story update message", message.data);
-              this.updateTextField(message.data);
-            }
-           }
-          } catch (error) {
-            console.error('Error processing message:', error);
+             if (message.type === "updateTextField") {
+            console.log("Received story update message", message.data);
+            window.parent?.postMessage(
+              {
+                type: "resetCanVote",
+                data: {
+                  no: "no data needed"
+                },
+              },
+              "*"
+            );
+            this.updateTextField(message.data);
+          }
         }
+      } catch (error) {
+        console.error("Error processing message:", error);
+      }
     });
 
+    
     this.channel.onmessage = (event) => {
       if (event.data) {
         console.log('Channel message received:', event.data);
@@ -314,11 +338,11 @@ updateTextField(data) {
     });
 
     // Broadcast updated grid state to other players
-    this.channel.postMessage({
-      type: 'updateCells',
-      cells: this.currentCells
-    });
-  }
+  //   this.channel.postMessage({
+  //     type: 'updateCells',
+  //     cells: this.currentCells
+  //   });
+  // }
 
   // Synchronize countdown timer across all clients
   syncCountdownTimer(seconds) {
@@ -369,9 +393,9 @@ updateTextField(data) {
     document.getElementById('final-story-text').textContent = finalStoryText;
     
     
-    setTimeout(() => {
-        storyCompletedOverlay.style.filter = 'none'; 
-    }, 300); 
+    // setTimeout(() => {
+    //     storyCompletedOverlay.style.filter = 'none'; 
+    // }, 300); 
 
     // Add restart game listener
     document.getElementById('restart-game').addEventListener('click', () => {
@@ -518,7 +542,11 @@ updateGameRoundDisplay() {
     document.body.appendChild(gameOverOverlay);
   }
 
-
+ resetVoteStatusPromise() {
+    this.voteStatusPromise = new Promise((resolve) => {
+      this.voteStatusResolve = resolve;
+    });
+  }
   // Add event listeners for word selection
   addEventListeners() {
     let selectedCell = null;
@@ -547,8 +575,29 @@ updateGameRoundDisplay() {
         }
 
         
-        const selectedCells = Array.from(document.querySelectorAll(".cell.selected"))
-          .map(cell => cell.dataset.word)
+       indow.parent?.postMessage(
+          {
+            type: "btnTrigger",
+            data: {
+              status: 'clicked',
+            },
+          },
+          "*"
+        );
+
+        console.log("Waiting for voteStatus...");
+        
+        // Wait for the voteStatus to be updated
+        await this.voteStatusPromise;
+
+        if (this.canVote === "false"){
+          console.log("canVote is false, u cannot vote in this round anymore")
+          return;
+        }
+        const selectedCells = Array.from(
+          document.querySelectorAll(".cell.selected")
+        )
+          .map((cell) => cell.dataset.word)
           .filter(Boolean);
 
         if (selectedCells.length === 0) return;
