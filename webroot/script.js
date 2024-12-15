@@ -336,7 +336,8 @@ updateTextField(data) {
   }
 
   showStoryCompletedScreen() {
-    // Create a story completed overlay
+    console.log("Initializing story completed screen...");
+    
     const storyCompletedOverlay = document.createElement('div');
     storyCompletedOverlay.id = 'story-completed-overlay';
     storyCompletedOverlay.innerHTML = `
@@ -346,8 +347,7 @@ updateTextField(data) {
         <button id="restart-game">Play Again</button>
       </div>
     `;
-    
-    // Style the overlay 
+
     storyCompletedOverlay.style.position = 'fixed';
     storyCompletedOverlay.style.top = '0';
     storyCompletedOverlay.style.left = '0';
@@ -357,30 +357,33 @@ updateTextField(data) {
     storyCompletedOverlay.style.display = 'flex';
     storyCompletedOverlay.style.justifyContent = 'center';
     storyCompletedOverlay.style.alignItems = 'center';
-    storyCompletedOverlay.style.zIndex = '1000';
-    storyCompletedOverlay.style.filter = 'blur(10px)'; 
-    storyCompletedOverlay.style.transition = 'filter 0.3s ease-in-out';
+    storyCompletedOverlay.style.zIndex = '9999';
+    storyCompletedOverlay.style.opacity = '0';
+    storyCompletedOverlay.style.transition = 'opacity 0.3s ease-in-out';
 
-    // Add to body
     document.body.appendChild(storyCompletedOverlay);
-    
-    // Set final story text 
-    const finalStoryText = this.storyElement.innerText;
-    document.getElementById('final-story-text').textContent = finalStoryText;
-    
-    
-    setTimeout(() => {
-        storyCompletedOverlay.style.filter = 'none'; 
-    }, 300); 
+    console.log("Story completed overlay added to the DOM.");
 
-    // Add restart game listener
+    const finalStoryText = this.storyElement ? this.storyElement.innerText : 'No story content available.';
+    document.getElementById('final-story-text').textContent = finalStoryText;
+    console.log("Final story text set:", finalStoryText);
+
+    setTimeout(() => {
+        storyCompletedOverlay.style.opacity = '1';
+        console.log("Story completed overlay fade-in triggered.");
+    }, 10);
+
     document.getElementById('restart-game').addEventListener('click', () => {
-        // Notify parent to restart the game
+        console.log("Restart button clicked. Sending restart message...");
         window.parent?.postMessage({
-            type: 'restartGame'
+            type: 'restartGame',
         }, '*');
     });
+
+    console.log("Story completed screen setup complete.");
 }
+
+
 
 updateGameRoundDisplay() {
   // define totalRounds 

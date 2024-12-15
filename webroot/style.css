@@ -52,20 +52,24 @@ body {
   background-size: cover;
   background-position: center;
   color: #fff;
-  padding: 20px 40px;
+  padding: 10px 20px;
   border-radius: 25px;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   position: relative;
   transition: transform 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
   word-wrap: break-word;
   text-align: center;
-  min-height: 30px;
+  min-height: 50px;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   background-color: #381A96;
+  line-height: 1.4;
+  max-width: 200px;
+  white-space: normal;
 }
+
 
 .cell:hover {
   transform: scale(1.05) rotate(3deg);
@@ -213,23 +217,21 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  filter: blur(10px);
-  transition: filter 0.3s ease-in-out;
+  z-index: 9999;
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.3s ease-in-out;
 }
-
 
 .story-completed-container {
   text-align: center;
   color: #ffffff;
   padding: 30px;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.9);
   border-radius: 20px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   max-width: 80%;
-  animation: fadeIn 1s ease-in-out;
+  animation: fadeIn 0.5s ease-in-out;
 }
-
 
 .story-completed-container h1 {
   font-size: 2.5rem;
@@ -237,7 +239,6 @@ body {
   margin-bottom: 20px;
   font-family: 'ArcadeClassic', sans-serif;
 }
-
 
 #final-story-text {
   white-space: pre-wrap;
@@ -252,7 +253,6 @@ body {
   font-family: 'Pixelify Sans', sans-serif;
   box-shadow: 0 0 15px rgba(188, 41, 188, 0.6);
 }
-
 
 #restart-game {
   background-color: #663DD4;

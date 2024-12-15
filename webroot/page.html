@@ -2,6 +2,18 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+        @font-face {
+            font-family: 'ArcadeClassic';
+            src: url('{../assets/fonts/ARCADECLASSIC.TTF}') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'ArcadeClassic', sans-serif;
+        }
+    </style>
     <meta charset="UTF-8" />
     <title>SubStory</title>
     <link rel="stylesheet" href="style.css" />
@@ -17,11 +29,10 @@
                 <div class="text">1</div>
             </div>
             <div id="timer-container" class="timer-container">
-                <img src="../assets/timer-icon.png" class="timer-icon" />
+                <img src="${context.assets.getURL('../assets/timer-icon.png')}" class="timer-icon" />
                 <span id="countdown-timer" class="countdown-timer">00:30</span>
             </div>
         </header>
-
         <main class="story-section">
             <p id="story"></p>
             <div id="grid" class="word-grid"></div>
