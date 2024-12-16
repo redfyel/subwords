@@ -1,23 +1,23 @@
 class WordGuesserGame {
   constructor() {
-      this.words = []; // Words will be dynamically loaded
-      this.story = "";
-      this.gridContainer = document.getElementById("grid");
-      this.message = document.getElementById("message");
-       this.voteStatusPromise = null; // Promise to wait for voteStatus
+    this.words = []; // Words will be dynamically loaded
+    this.story = "";
+    this.gridContainer = document.getElementById("grid");
+    this.message = document.getElementById("message");
+    this.voteStatusPromise = null; // Promise to wait for voteStatus
     this.voteStatusResolve = null; // Resolver for the Promise
-      this.postId = null;
-      this.username = 'Guest';
-      this.cellSelections = {};
-      this.currentCells = []; 
-      this.gameRound = 1;  
+    this.postId = null;
+    this.username = "Guest";
+    this.cellSelections = {};
+    this.currentCells = [];
+    this.gameRound = 1;
     this.canVote = ""
     this.fontUrl = ""
     this.timerUrl = ""
     this.subreddit = ""
     this.channel = new BroadcastChannel("game_updates");
 
-      this.initGame();
+    this.initGame();
   }
 
   // Initialize game
@@ -26,17 +26,17 @@ class WordGuesserGame {
     this.storyElement = document.getElementById("story");
     this.countdownElement = document.getElementById("countdown-timer");
     this.countdownInterval = null;
-    
-    // handling messages sent from devvit app 
-    window.addEventListener('message', (event) => {
-        console.log('Received message in script:', event.data);
-        try {
-          const { type, data} = event.data;
-          
-          if(type=='devvit-message'){
-            console.log('Devvit message received:', data);
-            
-            const{message} = data;
+
+    // handling messages sent from devvit app
+    window.addEventListener("message", (event) => {
+      console.log("Received message in script:", event.data);
+      try {
+        const { type, data } = event.data;
+
+        if (type == "devvit-message") {
+          console.log("Devvit message received:", data);
+
+          const { message } = data;
 
           console.log("going inside the nested message", message.data);
 
@@ -81,7 +81,7 @@ class WordGuesserGame {
           //   this.showStoryCompletedScreen();
           // }
 
-            if (message.type === "voteStatus") {
+          if (message.type === "voteStatus") {
             const { canVote } = message.data;
             console.log("vote status sent by devvit:",canVote)
             this.canVote = canVote;
@@ -92,35 +92,35 @@ class WordGuesserGame {
               this.resetVoteStatusPromise(); // Reset for future uses
             }
           }
-            
-            if (message.type === 'updateGameCells') {
-                console.log("Received game cell update:", message);
-                // Parse the stringified data
-                const {currentCells} = message.data || {};
-        
-                if (currentCells) {
-                    console.log('Update game cells:', currentCells);
-                    this.currentCells = currentCells || [];
-                    this.updateGridFromGameState();
-                }
-            }
 
-            if (message.type === 'updateGameRound') {
-              console.log("Received game round update:", message);
-              // Parse the stringified data
-              const {currentRound} = message.data || {};
-      
-              if (currentRound) {
-                  console.log('Update game round', currentRound);
-                  this.gameRound = currentRound;
-                  this.updateGameRoundDisplay();
-                  
-                  // Restart countdown timer for each new round
-                  this.startCountdownTimer(30);
-              }
+          if (message.type === "updateGameCells") {
+            console.log("Received game cell update:", message);
+            // Parse the stringified data
+            const { currentCells } = message.data || {};
+
+            if (currentCells) {
+              console.log("Update game cells:", currentCells);
+              this.currentCells = currentCells || [];
+              this.updateGridFromGameState();
+            }
           }
 
-         if (message.type === "gameOver") {
+          if (message.type === "updateGameRound") {
+            console.log("Received game round update:", message);
+            // Parse the stringified data
+            const { currentRound } = message.data || {};
+
+            if (currentRound) {
+              console.log("Update game round", currentRound);
+              this.gameRound = currentRound;
+              this.updateGameRoundDisplay();
+
+              // Restart countdown timer for each new round
+              this.startCountdownTimer(30);
+            }
+          }
+
+          if (message.type === "gameOver") {
             console.log("received game over message from channel", message);
 
             const { story } = message.data || {};
@@ -132,9 +132,7 @@ class WordGuesserGame {
             }
           }
 
-            
-
-             if (message.type === "updateTextField") {
+          if (message.type === "updateTextField") {
             console.log("Received story update message", message.data);
             window.parent?.postMessage(
               {
@@ -153,28 +151,30 @@ class WordGuesserGame {
       }
     });
 
-    
     this.channel.onmessage = (event) => {
       if (event.data) {
-        console.log('Channel message received:', event.data);
+        console.log("Channel message received:", event.data);
         switch (event.data.type) {
-          case 'updateCells':
-            console.log('Received cell update:', event.data.cells);
+          case "updateCells":
+            console.log("Received cell update:", event.data.cells);
             this.currentCells = event.data.cells;
             this.updateGridFromGameState();
             break;
-          case 'storyUpdate':
-            console.log('Received story update via channel:', event.data);
-            const storyToDisplay = event.data.story || 
-                                   (event.data.word ? `${this.storyElement.innerText} ${event.data.word}` : '');
+          case "storyUpdate":
+            console.log("Received story update via channel:", event.data);
+            const storyToDisplay =
+              event.data.story ||
+              (event.data.word
+                ? `${this.storyElement.innerText} ${event.data.word}`
+                : "");
             this.storyElement.innerText = storyToDisplay.trim();
             break;
-          case 'gameOver':
-            console.log('Game over received:', event.data);
+          case "gameOver":
+            console.log("Game over received:", event.data);
             this.showStoryCompletedScreen();
             break;
-          case 'updateRound':
-            console.log('Received game round update:', event.data);
+          case "updateRound":
+            console.log("Received game round update:", event.data);
             this.gameRound = event.data.round;
             this.updateGameRoundDisplay();
             break;
@@ -223,23 +223,13 @@ class WordGuesserGame {
         cell.style.transform = 'translateY(0) scale(1) rotate(0deg)';
       });
 
-        const playerCountEl = document.createElement("div");
-        playerCountEl.classList.add("cell-players");
-        cell.appendChild(playerCountEl);
+      const playerCountEl = document.createElement("div");
+      playerCountEl.classList.add("cell-players");
+      cell.appendChild(playerCountEl);
 
-
-        cell.style.opacity = "0";
-        cell.style.transform = "scale(0.9)";
-        setTimeout(() => {
-            cell.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-            cell.style.opacity = "1";
-            cell.style.transform = "scale(1)";
-        }, index * 100);  
-
-        gridContainer.appendChild(cell);
+      this.gridContainer.appendChild(cell);
     });
-} 
-
+  }
 
   updateTextField(data) {
     console.log("Updating text field with latest story", data);
@@ -290,25 +280,14 @@ class WordGuesserGame {
     }, 50);
   }
   updateGridFromGameState() {
-    console.log('Updating grid with cells:', JSON.stringify(this.currentCells));
-    
-    // // Check for game over state
-    // const gameOverCell = this.currentCells.find(cell => 
-    //   (typeof cell === 'string' && cell === 'GAME OVER') || 
-    //   (cell.word === 'GAME OVER')
-    // );
+    console.log("Updating grid with cells:", JSON.stringify(this.currentCells));
 
-    // if (gameOverCell) {
-    //   this.showGameOverScreen();
-    //   return;
-    // }
-    
     // Clear existing grid
-    this.gridContainer.innerHTML = '';
-    
+    this.gridContainer.innerHTML = "";
+
     // Recreate grid with new cells
-    this.words = this.currentCells.map(cell => 
-      typeof cell === 'string' ? cell : cell.word
+    this.words = this.currentCells.map((cell) =>
+      typeof cell === "string" ? cell : cell.word
     );
 
 
@@ -356,67 +335,44 @@ class WordGuesserGame {
     // });
   }
 
-  showStoryCompletedScreen() {
-    const storyCompletedOverlay = document.createElement("div");
-    storyCompletedOverlay.id = "story-completed-overlay";
-    storyCompletedOverlay.innerHTML = `
-        <div class="scroll-container">
-          <div class="scroll-header">📖 Final Story</div>
-          <div id="final-story-text" class="final-story"></div>
-        </div>
+   showStoryCompletedScreen() {
+    const overlay = document.createElement('div');
+    overlay.id = 'story-completed-overlay';
+    overlay.classList.add('overlay'); // Add a class for styling
 
-    `;
-    
+    const container = document.createElement('div');
+    container.classList.add('container'); // Add a class for styling
 
-    // Style the overlay with animation
-    Object.assign(storyCompletedOverlay.style, {
-      position: "fixed",
-      top: "0",
-      left: "0",
-      width: "100%",
-      height: "100%",
-      backgroundColor: "rgba(0,0,0,0.9)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: "1000",
-      opacity: "0",
-      transition: "opacity 0.8s ease"
-    });
+    const header = document.createElement('h2');
+    header.textContent = 'The End'; // More concise header
+    container.appendChild(header);
 
-    // Add to body and animate in
-    document.body.appendChild(storyCompletedOverlay);
-    requestAnimationFrame(() => {
-      storyCompletedOverlay.style.opacity = "1";
-    });
 
-    // Set final story text with animation
     const finalStoryText = this.storyElement.innerText;
-    const finalStoryElement = document.getElementById("final-story-text");
-    
-    // Animate each word with enhanced effects
-    finalStoryText.split(" ").forEach((word, index) => {
-      const wordSpan = document.createElement("span");
-      wordSpan.textContent = word + " ";
-      wordSpan.className = "story-word";
-      wordSpan.style.opacity = "0";
-      wordSpan.style.transform = "translateY(20px) scale(0.95)";
-      wordSpan.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
-      wordSpan.style.transitionDelay = `${index * 0.08}s`;
-      finalStoryElement.appendChild(wordSpan);
-      
-      setTimeout(() => {
-        wordSpan.style.opacity = "1";
-        wordSpan.style.transform = "translateY(0) scale(1)";
-      }, 100 + index * 80);
-    });
+    const storyContent = document.createElement('div');
+    storyContent.id = 'final-story-text';
+    storyContent.classList.add('story-content'); // Add class for styling
 
-    // Add sparkle animation to stars
-    const stars = storyCompletedOverlay.querySelectorAll('.completion-stars span');
-    stars.forEach((star, index) => {
-      star.style.animationDelay = `${index * 0.2}s`;
+     // Use a more performant method for large text
+    storyContent.textContent = finalStoryText;
+    container.appendChild(storyContent);
+
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.classList.add('close-button'); // Add class for styling
+    closeButton.addEventListener('click', () => {
+      overlay.remove();
     });
+    container.appendChild(closeButton);
+
+    overlay.appendChild(container);
+    document.body.appendChild(overlay);
+
+
   }
+
+
 
   updateGameRoundDisplay() {
     // Create or update game round display
@@ -463,36 +419,23 @@ class WordGuesserGame {
   startCountdownTimer(seconds = 30) {
     // Clear any existing interval
     if (this.countdownInterval) {
-        clearInterval(this.countdownInterval);
+      clearInterval(this.countdownInterval);
     }
 
     // Reset timer color to default
-    this.countdownElement.style.color = '#0C004D';
-
-    // Convert total seconds into minutes and seconds
-    let minutes = Math.floor(seconds / 60);
-    let remainingSeconds = seconds % 60;
-
-    // Format the timer 
-    const formatTime = (min, sec) => {
-        return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-    };
+    this.countdownElement.style.color = "#ff4500";
 
     // Set initial time
-    this.countdownElement.textContent = formatTime(minutes, remainingSeconds);
+    this.countdownElement.textContent = seconds;
 
     this.countdownInterval = setInterval(() => {
-        seconds--;
-        minutes = Math.floor(seconds / 60);
-        remainingSeconds = seconds % 60;
+      seconds--;
+      this.countdownElement.textContent = seconds;
 
-        // Update the timer display
-        this.countdownElement.textContent = formatTime(minutes, remainingSeconds);
-
-        // Change color as time gets low
-        if (seconds <= 10) {
-            this.countdownElement.style.color = '#ff0000'; // Red
-        }
+      // Change color as time gets low
+      if (seconds <= 10) {
+        this.countdownElement.style.color = "#ff0000"; // Red
+      }
 
       if (seconds <= 0) {
         clearInterval(this.countdownInterval);
@@ -502,27 +445,28 @@ class WordGuesserGame {
     }, 1000);
   }
 
- resetVoteStatusPromise() {
+  resetVoteStatusPromise() {
     this.voteStatusPromise = new Promise((resolve) => {
       this.voteStatusResolve = resolve;
     });
   }
+
   // Add event listeners for word selection
   addEventListeners() {
     let selectedCell = null;
 
-    // Track the cell clicked for selection 
     this.gridContainer.addEventListener("click", (event) => {
       const cell = event.target.closest(".cell");
 
-      // Always allow cell selection before the select button is clicked
+      // Always allow cell selection before confirm button
       if (cell) {
         // Deselect previous cell if exists
         if (selectedCell) {
           selectedCell.classList.remove("selected");
         }
 
-        cell.classList.add("selected"); 
+        // Select new cell
+        cell.classList.add("selected");
         selectedCell = cell;
 
         // Add a ripple effect
@@ -586,28 +530,27 @@ class WordGuesserGame {
 
 
         // Notify Devvit to sync state with ONLY the newly selected cells
-        window.parent?.postMessage({
-          type: 'saveCells',
-          data: {
-            newCells: selectedCells,
-            session: Math.random().toString(36).substring(2) // Generate a unique session ID
-          }
-        }, '*');
+        window.parent?.postMessage(
+          {
+            type: "saveCells",
+            data: {
+              newCells: selectedCells,
+              session: Math.random().toString(36).substring(2), // Generate a unique session ID
+            },
+          },
+          "*"
+        );
 
-        selectedCells.forEach(word => {
-          window.parent?.postMessage({
-            type: 'voteWord',
-            data: { word }
-          }, '*');
+        // Vote for selected words
+        selectedCells.forEach((word) => {
+          window.parent?.postMessage(
+            {
+              type: "voteWord",
+              data: { word },
+            },
+            "*"
+          );
         });
-
-        // Start 30-second timer after confirm
-        setTimeout(() => {
-          // Clear selections after 30 seconds
-          document.querySelectorAll(".cell.selected").forEach(cell => {
-            cell.classList.remove("selected");
-          });
-        }, 30000);
 
       } catch (error) {
         console.error("Error processing selection:", error);
@@ -618,13 +561,11 @@ class WordGuesserGame {
     });
   }
 
-
   arraysMatch(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
-    return arr1.every(word => arr2.includes(word));
+    return arr1.every((word) => arr2.includes(word));
   }
 }
-
 
 // Initialize game
 new WordGuesserGame();

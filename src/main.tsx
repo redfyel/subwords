@@ -981,23 +981,82 @@ Devvit.addCustomPostType({
               height="100%"
             />
             <vstack alignment="middle center" width="100%" height="100%">
-              <spacer height="60%" />
+              <spacer height="20%" />
               {status === "GAME_OVER" ? (
-                <vstack backgroundColor="#F0FFFF" border="thick" borderColor="#00FFFF" cornerRadius="medium" padding="small" >
-                <text 
-                wrap
-                size="xxlarge"
-                weight="bold"
-                color="black"
-                alignment="center"
-                width="100%" 
-                style="heading"
-                outline="thick"                
-                >
-                    Game Over - Final Story{'\n\n'}
-                    {story}
-                </text>
-                </vstack>
+             <vstack
+             backgroundColor="#ffffff"
+             border="thin"
+             borderColor="#E1E8ED"
+             cornerRadius="medium"
+             padding="medium"
+             width="80%"
+             minHeight="60%"
+             alignment="start"
+           >
+            <spacer size="large" />
+             <hstack alignment="center" >
+               <image
+                 url="mascot-round.png"
+                 imageWidth={60}
+                 imageHeight={60}
+                 
+               />
+               <spacer size="medium" />
+               <vstack alignment="start">
+                 <text
+                   size="xlarge"
+                   weight="bold"
+                   color="#1DA1F2"
+                   alignment="start"
+                 >
+                   Substory
+                 </text>
+                 <text
+                   size="large"
+                   weight="regular"
+                   color="#657786"
+                   alignment="start"
+                 >
+                   @substory
+                 </text>
+               </vstack>
+             </hstack>
+             <spacer size="small" />
+             <vstack alignment="center" width="100%">
+               {/* <text
+                 wrap
+                 size="xxlarge"
+                 weight="bold"
+                 alignment="center"
+                 color="#FF5733"
+               >
+                 Game Over!{'\n\n'}
+               </text> */}
+           
+               {/* <text
+                 wrap
+                 size="xxlarge"
+                 weight="bold"
+                 color="#00FFFF"
+                 alignment="center"
+               >
+                 The Final Story {'\n\n'}
+               </text> */}
+            <spacer size="medium" />
+               <text
+                 wrap
+                 size="xlarge"
+                 weight="regular"
+                 color="#14171A"
+                 alignment="center"
+                 width="100%"
+               >
+                 {story}
+               </text>
+             </vstack>
+           </vstack>
+           
+            
               ) : (
                 <button
                   onPress={onStartGame}
