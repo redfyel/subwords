@@ -12,7 +12,10 @@ class WordGuesserGame {
       this.currentCells = []; 
       this.gameRound = 1;  
     this.canVote = ""
-      this.channel = new BroadcastChannel('game_updates');
+    this.fontUrl = ""
+    this.timerUrl = ""
+    this.subreddit = ""
+    this.channel = new BroadcastChannel("game_updates");
 
       this.initGame();
   }
@@ -35,37 +38,48 @@ class WordGuesserGame {
             
             const{message} = data;
 
-            console.log('going inside the nested message', message.data);
-          
-            if (message.type === 'initialData') {
-                const {username, currentCells, story, gameRound } = message.data;
-                console.log('Initial data:', {username, currentCells, story, gameRound});
-                this.username = username;
-                this.currentCells = currentCells || []; 
-                this.gameRound = gameRound || 1;
-            
-                // Set words from currentCells before creating grid
-                this.words = this.currentCells.map(cell => cell.word);
-            
-                // Create grid after setting words
-                this.createGrid();
-                this.addEventListeners();
-            
-                this.updateGridFromGameState();
-            
-                // Update story and game round
-                this.storyElement.innerText = story || '';
-                this.updateGameRoundDisplay();
-                
-                // Start countdown timer
-                this.startCountdownTimer(30);
-            } 
+          console.log("going inside the nested message", message.data);
 
-            if (message.type === 'storyCompleted') {
-                const { story } = message.data;
-                this.storyElement.innerText = story;
-                this.showStoryCompletedScreen();
-            }
+          if (message.type === "initialData") {
+            const { username, currentCells, story, gameRound, fontUrl, timerUrl, subreddit } = message.data;
+            console.log("Initial data:", {
+              username,
+              currentCells,
+              story,
+              gameRound,
+              fontUrl,
+              timerUrl,
+              subreddit,
+            });
+            this.username = username;
+            this.currentCells = currentCells || [];
+            this.gameRound = gameRound || 1;
+            this.fontUrl = fontUrl
+            this.timerUrl = timerUrl
+            this.subreddit = subreddit
+
+            // Set words from currentCells before creating grid
+            this.words = this.currentCells.map((cell) => cell.word);
+
+            // Create grid after setting words
+            this.createGrid();
+            this.addEventListeners();
+
+            this.updateGridFromGameState();
+
+            // Update story and game round
+            this.storyElement.innerText = story || "";
+            this.updateGameRoundDisplay();
+
+            // Start countdown timer
+            this.startCountdownTimer(30);
+          }
+
+          // if (message.type === "storyCompleted") {
+          //   const { story } = message.data;
+          //   this.storyElement.innerText = story;
+          //   this.showStoryCompletedScreen();
+          // }
 
             if (message.type === "voteStatus") {
             const { canVote } = message.data;
@@ -171,15 +185,43 @@ class WordGuesserGame {
 
   // Create the grid of words
   createGrid() {
-    const gridContainer = document.getElementById("grid");
-    gridContainer.innerHTML = '';  
+    this.gridContainer.innerHTML = "";
+    const logo = document.getElementById("timer-logo");
+    logo.src = this.timerUrl;
+    logo.style.width = "35px";
+    logo.style.height = "35px";
+    logo.style.filter = "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))";
+    
+    // Limit to 8 words
+    const displayWords = this.words.slice(0, 8);
+    
+    document.body.style.backgroundSize = "400% 400%";
+    document.body.style.backgroundRepeat = "no-repeat";
+    document.body.style.backgroundPosition = "center";
+    document.body.style.animation = "gradientBG 15s ease infinite";
 
-    this.words.forEach((word, index) => {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.innerText = word;
-        cell.dataset.word = word;
-        cell.dataset.id = index + 1;
+    displayWords.forEach((word, index) => {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      
+      // Create word container
+      const wordSpan = document.createElement("span");
+      wordSpan.textContent = word;
+      wordSpan.style.position = "relative";
+      wordSpan.style.zIndex = "1";
+      
+      cell.appendChild(wordSpan);
+      cell.dataset.word = word;
+      cell.dataset.id = index + 1;
+
+      // Add hover effect
+      cell.addEventListener('mouseover', () => {
+        cell.style.transform = `translateY(-5px) scale(1.02) rotate(${Math.random() * 2 - 1}deg)`;
+      });
+      
+      cell.addEventListener('mouseout', () => {
+        cell.style.transform = 'translateY(0) scale(1) rotate(0deg)';
+      });
 
         const playerCountEl = document.createElement("div");
         playerCountEl.classList.add("cell-players");
@@ -199,61 +241,54 @@ class WordGuesserGame {
 } 
 
 
-updateTextField(data) {
-  console.log("Updating text field with latest story", data);
-  if (data && (data.expandedWord || data.word)) {
-      const wordToDisplay = data.expandedWord || data.word;
-
-      // Display the most voted word
-      const overlay = document.createElement("div");
-      overlay.id = "word-overlay";
-      overlay.style = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(0, 0, 0, 0.8);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-          backdrop-filter: blur(8px);
-          transition: opacity 0.5s ease-in-out;
-      `;
-
-      const wordElement = document.createElement("div");
-      wordElement.style = `
-          color: white;
-          font-size: 3rem;
-          font-family: 'ArcadeClassic', sans-serif;
-          text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.6);
-          animation: fadeInZoom 1s ease-in-out;
-      `;
-      wordElement.innerText = wordToDisplay;
-
-      overlay.appendChild(wordElement);
-      document.body.appendChild(overlay);
-
-      // append after 3s
+  updateTextField(data) {
+    console.log("Updating text field with latest story", data);
+    if (data && (data.expandedWord || data.word)) {
+      const wordToAppend = data.expandedWord || data.word;
+      
+      // Create a new span for the word with animation
+      const wordSpan = document.createElement("span");
+      wordSpan.textContent = ` ${wordToAppend}`;
+      wordSpan.style.opacity = "0";
+      wordSpan.style.transform = "translateY(20px)";
+      wordSpan.style.transition = "all 0.5s ease";
+      wordSpan.style.display = "inline-block";
+      wordSpan.style.fontFamily = this.fontUrl || "sans-serif";
+      
+      this.storyElement.appendChild(wordSpan);
+      this.sto
+      
+      // Trigger animation
       setTimeout(() => {
-          overlay.style.opacity = "0";
-          setTimeout(() => document.body.removeChild(overlay), 500);
+        wordSpan.style.opacity = "1";
+        wordSpan.style.transform = "translateY(0)";
+      }, 50);
 
-          
-          const storyElement = this.storyElement;
-          const animatedWord = document.createElement("span");
-          animatedWord.style = `
-              opacity: 0;
-              display: inline-block;
-              animation: fadeInMove 1s forwards;
-          `;
-          animatedWord.innerText = ` ${wordToDisplay}`;
-          storyElement.appendChild(animatedWord);
-      }, 3000);
+      // Add sparkle effect
+      this.addSparkleEffect(wordSpan);
+    }
   }
-}
 
+  addSparkleEffect(element) {
+    const sparkle = document.createElement("div");
+    sparkle.style.position = "absolute";
+    sparkle.style.width = "100%";
+    sparkle.style.height = "100%";
+    sparkle.style.pointerEvents = "none";
+    sparkle.style.background = "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 60%)";
+    sparkle.style.opacity = "0";
+    sparkle.style.transition = "opacity 0.3s ease";
+    
+    element.appendChild(sparkle);
+    
+    setTimeout(() => {
+      sparkle.style.opacity = "0.5";
+      setTimeout(() => {
+        sparkle.style.opacity = "0";
+        setTimeout(() => sparkle.remove(), 300);
+      }, 300);
+    }, 50);
+  }
   updateGridFromGameState() {
     console.log('Updating grid with cells:', JSON.stringify(this.currentCells));
     
@@ -275,201 +310,155 @@ updateTextField(data) {
     this.words = this.currentCells.map(cell => 
       typeof cell === 'string' ? cell : cell.word
     );
-    
-    // Check for story completion
-    if (this.words.includes('END STORY')) {
-      this.showStoryCompletedScreen();
-      return;
-    }
-    
+
+
     this.createGrid();
-    
-    document.querySelectorAll(".cell").forEach(cell => {
-        const word = cell.dataset.word;
-        
-        const cellData = this.currentCells.find(c => {
-          if (typeof c === 'string') return c === word;
-          return c.word === word;
-        });
-        
-        if (cellData) {
-            const userCount = typeof cellData === 'string' 
-              ? 0 
-              : (cellData.userCount || 0);
-            
-            let color;
-            
-            if (word === 'END STORY') {
-              color = '#FF6347'; // Tomato red for End Story cell
-          } else if (userCount <= 2) {
-              color = '#381A96'; 
-          } else if (userCount <= 5) {
-              color = '#381A96'; 
-          } else {
-              color = '#381A96'; 
-          }
-          
-            
-            cell.style.backgroundColor = color;
-            cell.dataset.userCount = userCount.toString();
-            
-            if (userCount > 0) {
-              const playerCountEl = cell.querySelector('.cell-players') || document.createElement('div');
-              playerCountEl.classList.add('cell-players');
-              playerCountEl.textContent = `+${userCount}`; 
-              playerCountEl.style.position = 'absolute';
-              playerCountEl.style.top = '5px';
-              playerCountEl.style.right = '5px';
-              playerCountEl.style.padding = '3px 6px';
-              playerCountEl.style.borderRadius = '5px';
-              playerCountEl.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-              playerCountEl.style.color = 'white';
-              playerCountEl.style.fontSize = '0.8rem';
-              playerCountEl.style.fontWeight = 'bold';
-              cell.appendChild(playerCountEl);
-          } else {
-              // Remove vite tag if it exists and userCount is 0
-              const existingPlayerCountEl = cell.querySelector('.cell-players');
-              if (existingPlayerCountEl) {
-                  cell.removeChild(existingPlayerCountEl);
-              }
-          }
+
+    document.querySelectorAll(".cell").forEach((cell) => {
+      const word = cell.dataset.word;
+
+      const cellData = this.currentCells.find((c) => {
+        if (typeof c === "string") return c === word;
+        return c.word === word;
+      });
+
+      if (cellData) {
+        const userCount =
+          typeof cellData === "string" ? 0 : cellData.userCount || 0;
+
+        let color;
+
+        if (userCount == 0) {
+          color = "#FFFFFF"; // Tomato red for End Story cell
+        } else if (userCount <= 2) {
+          color = "#90EE90"; // Light green
+        } else if (userCount <= 5) {
+          color = "#32CD32"; // Medium green
+        } else {
+          color = "#40c632"; // Dark green
         }
+
+        cell.style.backgroundColor = color;
+        cell.dataset.userCount = userCount.toString();
+
+        const playerCountEl =
+          cell.querySelector(".cell-players") || document.createElement("div");
+        playerCountEl.classList.add("cell-players");
+        playerCountEl.textContent = userCount > 0 ? `+${userCount}` : "";
+        cell.appendChild(playerCountEl);
+      }
     });
 
     // Broadcast updated grid state to other players
-  //   this.channel.postMessage({
-  //     type: 'updateCells',
-  //     cells: this.currentCells
-  //   });
-  // }
-
-  // Synchronize countdown timer across all clients
-  syncCountdownTimer(seconds) {
-    // Broadcast timer start to all clients
-    window.parent?.postMessage({
-      type: 'syncTimer',
-      data: {
-        seconds: seconds,
-        timestamp: Date.now()
-      }
-    }, '*');
-
-    // Start local timer
-    this.startCountdownTimer(seconds);
+    // this.channel.postMessage({
+    //   type: "updateCells",
+    //   cells: this.currentCells,
+    // });
   }
 
   showStoryCompletedScreen() {
-    console.log("Initializing story completed screen...");
-    
-    const storyCompletedOverlay = document.createElement('div');
-    storyCompletedOverlay.id = 'story-completed-overlay';
+    const storyCompletedOverlay = document.createElement("div");
+    storyCompletedOverlay.id = "story-completed-overlay";
     storyCompletedOverlay.innerHTML = `
-      <div class="story-completed-container">
-        <h1>Final Story: A Collaborative Journey</h1>
-        <div id="final-story-text" class="final-story-text"></div>
-        <button id="restart-game">Play Again</button>
-      </div>
+        <div class="scroll-container">
+          <div class="scroll-header">📖 Final Story</div>
+          <div id="final-story-text" class="final-story"></div>
+        </div>
+
     `;
+    
 
-    storyCompletedOverlay.style.position = 'fixed';
-    storyCompletedOverlay.style.top = '0';
-    storyCompletedOverlay.style.left = '0';
-    storyCompletedOverlay.style.width = '100%';
-    storyCompletedOverlay.style.height = '100%';
-    storyCompletedOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    storyCompletedOverlay.style.display = 'flex';
-    storyCompletedOverlay.style.justifyContent = 'center';
-    storyCompletedOverlay.style.alignItems = 'center';
-    storyCompletedOverlay.style.zIndex = '9999';
-    storyCompletedOverlay.style.opacity = '0';
-    storyCompletedOverlay.style.transition = 'opacity 0.3s ease-in-out';
-
-    document.body.appendChild(storyCompletedOverlay);
-    console.log("Story completed overlay added to the DOM.");
-
-    const finalStoryText = this.storyElement ? this.storyElement.innerText : 'No story content available.';
-    document.getElementById('final-story-text').textContent = finalStoryText;
-    console.log("Final story text set:", finalStoryText);
-
-    setTimeout(() => {
-        storyCompletedOverlay.style.opacity = '1';
-        console.log("Story completed overlay fade-in triggered.");
-    }, 10);
-
-    document.getElementById('restart-game').addEventListener('click', () => {
-        console.log("Restart button clicked. Sending restart message...");
-        window.parent?.postMessage({
-            type: 'restartGame',
-        }, '*');
+    // Style the overlay with animation
+    Object.assign(storyCompletedOverlay.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0,0.9)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: "1000",
+      opacity: "0",
+      transition: "opacity 0.8s ease"
     });
 
-    console.log("Story completed screen setup complete.");
-}
+    // Add to body and animate in
+    document.body.appendChild(storyCompletedOverlay);
+    requestAnimationFrame(() => {
+      storyCompletedOverlay.style.opacity = "1";
+    });
 
+    // Set final story text with animation
+    const finalStoryText = this.storyElement.innerText;
+    const finalStoryElement = document.getElementById("final-story-text");
+    
+    // Animate each word with enhanced effects
+    finalStoryText.split(" ").forEach((word, index) => {
+      const wordSpan = document.createElement("span");
+      wordSpan.textContent = word + " ";
+      wordSpan.className = "story-word";
+      wordSpan.style.opacity = "0";
+      wordSpan.style.transform = "translateY(20px) scale(0.95)";
+      wordSpan.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
+      wordSpan.style.transitionDelay = `${index * 0.08}s`;
+      finalStoryElement.appendChild(wordSpan);
+      
+      setTimeout(() => {
+        wordSpan.style.opacity = "1";
+        wordSpan.style.transform = "translateY(0) scale(1)";
+      }, 100 + index * 80);
+    });
 
-
-updateGameRoundDisplay() {
-  // define totalRounds 
-  if (!this.totalRounds) {
-      this.totalRounds = 15; 
+    // Add sparkle animation to stars
+    const stars = storyCompletedOverlay.querySelectorAll('.completion-stars span');
+    stars.forEach((star, index) => {
+      star.style.animationDelay = `${index * 0.2}s`;
+    });
   }
 
-  // Create or update game round display
-  let gameRoundEl = document.getElementById('game-round');
-  if (!gameRoundEl) {
-      gameRoundEl = document.createElement('div');
-      gameRoundEl.id = 'game-round';
-      gameRoundEl.classList.add('game-round');
-
-      // Add SVG for circular progress
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("class", "circle");
-      svg.setAttribute("viewBox", "0 0 36 36");
-
-      const track = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      track.setAttribute("class", "track");
-      track.setAttribute("cx", "18");
-      track.setAttribute("cy", "18");
-      track.setAttribute("r", "16");
-
-      const progress = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      progress.setAttribute("class", "progress");
-      progress.setAttribute("cx", "18");
-      progress.setAttribute("cy", "18");
-      progress.setAttribute("r", "16");
-      progress.setAttribute("style", "stroke-dasharray: 100; stroke-dashoffset: 100;");
-
-      svg.appendChild(track);
-      svg.appendChild(progress);
-      gameRoundEl.appendChild(svg);
-
-      // Add text display for round
-      const textEl = document.createElement("div");
-      textEl.classList.add("text");
-      textEl.textContent = `${this.gameRound} / ${this.totalRounds}`;
-      gameRoundEl.appendChild(textEl);
-
-      document.getElementById('game-container').prepend(gameRoundEl);
+  updateGameRoundDisplay() {
+    // Create or update game round display
+    let gameRoundEl = document.getElementById("game-round");
+    let subredditEl = document.getElementById("subreddit-display");
+    
+    if (!gameRoundEl) {
+      gameRoundEl = document.createElement("div");
+      gameRoundEl.id = "game-round";
+      gameRoundEl.classList.add("game-round");
+      document.getElementById("game-container").prepend(gameRoundEl);
+    }
+    
+    if (!subredditEl) {
+      subredditEl = document.createElement("div");
+      subredditEl.id = "subreddit-display";
+      subredditEl.classList.add("subreddit-display");
+      
+      const subredditText = document.createElement("span");
+      subredditText.textContent = `r/${this.subreddit}`;
+      
+      // const questionIcon = document.createElement("span");
+      // questionIcon.innerHTML = "❓";
+      // questionIcon.classList.add("question-icon");
+      
+      const tooltip = document.createElement("div");
+      tooltip.classList.add("subreddit-tooltip");
+      tooltip.textContent = `Words are taken from r/${this.subreddit}`;
+      
+      subredditEl.appendChild(subredditText);
+      // subredditEl.appendChild(questionIcon);
+      subredditEl.appendChild(tooltip);
+      
+      document.getElementById("game-round-container").appendChild(subredditEl);
+    } else {
+      const subredditText = subredditEl.querySelector("span:first-child");
+      subredditText.textContent = this.subreddit;
+    }
+    
+    console.log("Updating game round display:", this.gameRound);
+    gameRoundEl.textContent = `Round: ${this.gameRound}`;
   }
-
-  // Update round display text
-  const textEl = gameRoundEl.querySelector(".text");
-  textEl.textContent = ` ${this.gameRound}`;
-
-  // Update circular progress bar
-  const progressCircle = gameRoundEl.querySelector(".progress");
-  const progressPercentage = (this.gameRound / this.totalRounds) * 100;
-  const strokeDasharray = 100; 
-  const strokeDashoffset = strokeDasharray - progressPercentage;
-
-  progressCircle.style.strokeDasharray = strokeDasharray;
-  progressCircle.style.strokeDashoffset = strokeDashoffset;
-
-  console.log('game round display:', `Round: ${this.gameRound} / ${this.totalRounds}`, `Progress per: ${progressPercentage}%`);
-}
-
-
 
   startCountdownTimer(seconds = 30) {
     // Clear any existing interval
@@ -505,44 +494,12 @@ updateGameRoundDisplay() {
             this.countdownElement.style.color = '#ff0000'; // Red
         }
 
-        if (seconds <= 0) {
-            clearInterval(this.countdownInterval);
-            this.countdownElement.textContent = '00:00';
-            this.countdownElement.style.color = '#ff0000'; // Ensure red
-        }
+      if (seconds <= 0) {
+        clearInterval(this.countdownInterval);
+        this.countdownElement.textContent = "Overtime";
+        this.countdownElement.style.color = "#ff0000"; // Ensure red
+      }
     }, 1000);
-}
-
-
-  showGameOverScreen() {
-    // Create a game over overlay
-    const gameOverOverlay = document.createElement('div');
-    gameOverOverlay.id = 'game-over-overlay';
-    gameOverOverlay.innerHTML = `
-      <div class="game-over-content">
-        <h1>Game Over</h1>
-        <p>Final Story: A Collaborative Journey</p>
-        <div class="final-story-text">${this.storyElement.innerText}</div>
-      </div>
-    `;
-    
-    // Style the overlay
-    gameOverOverlay.style.position = 'fixed';
-    gameOverOverlay.style.top = '0';
-    gameOverOverlay.style.left = '0';
-    gameOverOverlay.style.width = '100%';
-    gameOverOverlay.style.height = '100%';
-    gameOverOverlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
-    gameOverOverlay.style.display = 'flex';
-    gameOverOverlay.style.justifyContent = 'center';
-    gameOverOverlay.style.alignItems = 'center';
-    gameOverOverlay.style.zIndex = '1000';
-    gameOverOverlay.style.color = 'white';
-    gameOverOverlay.style.padding = '20px';
-    gameOverOverlay.style.textAlign = 'center';
-    
-    // Add to body
-    document.body.appendChild(gameOverOverlay);
   }
 
  resetVoteStatusPromise() {
@@ -567,18 +524,41 @@ updateGameRoundDisplay() {
 
         cell.classList.add("selected"); 
         selectedCell = cell;
+
+        // Add a ripple effect
+        const ripple = document.createElement("div");
+        ripple.classList.add("ripple");
+        cell.appendChild(ripple);
+
+        // Remove ripple after animation
+        setTimeout(() => {
+          ripple.remove();
+        }, 1000);
       }
     });
 
-    // When the "select" button is clicked, trigger anim
-    document.getElementById("confirm").addEventListener("click", () => {
+    document.getElementById("confirm").addEventListener("click", async () => {
+      const confirmButton = document.getElementById("confirm");
       try {
-        if (selectedCell) {
-          selectedCell.classList.add("neonGlow");
+        confirmButton.disabled = true;
+        const selectedCells = Array.from(
+          document.querySelectorAll(".cell.selected")
+        )
+          .map((cell) => cell.dataset.word)
+          .filter(Boolean);
+        // Check if no cell is selected
+        if (selectedCells.length === 0) {
+          const toast = document.getElementById('toast');
+          toast.textContent = "Please select a word first";
+          toast.classList.add('show');
+          setTimeout(() => {
+            toast.classList.remove('show');
+          }, 2500);
+          return;
         }
-
         
-       indow.parent?.postMessage(
+        // Get all selected cells
+        window.parent?.postMessage(
           {
             type: "btnTrigger",
             data: {
@@ -594,16 +574,16 @@ updateGameRoundDisplay() {
         await this.voteStatusPromise;
 
         if (this.canVote === "false"){
-          console.log("canVote is false, u cannot vote in this round anymore")
+          console.log("canVote is false, u cannot vote in this round anymore");
+          const toast = document.getElementById('toast');
+          toast.textContent = "You can only vote once per round";
+          toast.classList.add('show');
+          setTimeout(() => {
+            toast.classList.remove('show');
+          }, 2500);
           return;
         }
-        const selectedCells = Array.from(
-          document.querySelectorAll(".cell.selected")
-        )
-          .map((cell) => cell.dataset.word)
-          .filter(Boolean);
 
-        if (selectedCells.length === 0) return;
 
         // Notify Devvit to sync state with ONLY the newly selected cells
         window.parent?.postMessage({
@@ -630,7 +610,10 @@ updateGameRoundDisplay() {
         }, 30000);
 
       } catch (error) {
-        console.error('Error processing selection:', error);
+        console.error("Error processing selection:", error);
+      }finally {
+        // Ensure the button is always re-enabled, even in case of errors or early returns
+        confirmButton.disabled = false;
       }
     });
   }

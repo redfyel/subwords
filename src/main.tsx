@@ -1,6 +1,6 @@
 import "./createPost.js";
 
-import { Devvit, useState, useChannel } from "@devvit/public-api";
+import { Devvit, useState, useChannel, Subreddit } from "@devvit/public-api";
 import {
   fetchRecentPostTitles,
   generateWordsFromTitles,
@@ -10,11 +10,8 @@ import {
 } from "../server/fetchRecentPosts.js";
 
 const MAX_JOBS = 10;
-
-const JOB_LIST_KEY = 'active_job_list';
-const MAX_STORY_WORDS = 15;  // Maximum number of words in the story before game ends
-const MAX_ROUNDS = 5;
-
+const JOB_LIST_KEY = "active_job_list";
+const MAX_ROUNDS = 6;
 
 type WordData = {
   word: string;
@@ -29,6 +26,10 @@ type WebViewMessage =
         currentCells: WordData[];
         story: string;
         gameRound: number;
+        timeRemaining: number;
+        fontUrl: string;
+        timerUrl: string;
+        subreddit: string;
       };
     }
   | {
@@ -83,8 +84,9 @@ Devvit.addSchedulerJob({
   onRun: async (event, context) => {
     await context.redis.set(
       `subwords_${context.postId}_${context.reddit.getCurrentUser()}_canVote`,
-      "true", {
-        expiration: new Date(Date.now() + 86400000) // 24 hours from now
+      "true",
+      {
+        expiration: new Date(Date.now() + 86400000), // 24 hours from now
       }
     );
     if (!event.data?.postId) {
@@ -149,8 +151,9 @@ Devvit.addSchedulerJob({
         // Reset votes for the used word
         await context.redis.set(
           `subwords_${postId}_${mostVotedWord}_votes`,
-          "0", {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          "0",
+          {
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           }
         );
 
@@ -163,7 +166,7 @@ Devvit.addSchedulerJob({
 
         const newRound = currentRound + 1;
         await context.redis.set(gameRoundKey, newRound.toString(), {
-          expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          expiration: new Date(Date.now() + 86400000), // 24 hours from now
         });
 
         // Always increment and save the round when a most voted word is processed
@@ -265,19 +268,28 @@ Devvit.addSchedulerJob({
         // COMPLETELY replace existing cells in Redis
         await context.redis.set(
           `subwords_${postId}`,
-          newCells.map((cell) => cell.word).join(","), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          newCells.map((cell) => cell.word).join(","),
+          {
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           }
         );
 
         // Reset all vote counts for new words
         for (const cell of newCells) {
-          await context.redis.set(`subwords_${postId}_${cell.word}_votes`, "0", {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
-          });
-          await context.redis.set(`subwords_${postId}_${cell.word}_users`, "0", {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
-          });
+          await context.redis.set(
+            `subwords_${postId}_${cell.word}_votes`,
+            "0",
+            {
+              expiration: new Date(Date.now() + 86400000), // 24 hours from now
+            }
+          );
+          await context.redis.set(
+            `subwords_${postId}_${cell.word}_users`,
+            "0",
+            {
+              expiration: new Date(Date.now() + 86400000), // 24 hours from now
+            }
+          );
         }
 
         // Broadcast cell update with new words
@@ -425,6 +437,17 @@ Devvit.addCustomPostType({
       return currUser?.username ?? "anon";
     });
 
+    const [status] = useState(async () => {
+      const currStatus = await context.redis.get(
+        `subwords_${context.postId}_game_status`
+      );
+      return currStatus ?? "inGame";
+    });
+    const subreddits = ["funny", "news", "history", "interestingasfuck"];
+
+    // Select a random word
+    const subreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+
     // Initialize game state from Redis
     const [cells, setCells] = useState(async () => {
       const redisCells =
@@ -472,14 +495,16 @@ Devvit.addCustomPostType({
           const updatedCells = [...existingCells, ...newWords];
           await context.redis.set(
             `subwords_${context.postId}`,
-            updatedCells.join(","), {
-              expiration: new Date(Date.now() + 86400000) // 24 hours from now
+            updatedCells.join(","),
+            {
+              expiration: new Date(Date.now() + 86400000), // 24 hours from now
             }
           );
           await context.redis.set(
             `subwords_${context.postId}_all_words`,
-            allWords.slice(5 - cellsWithCounts.length).join(","), {
-              expiration: new Date(Date.now() + 86400000) // 24 hours from now
+            allWords.slice(5 - cellsWithCounts.length).join(","),
+            {
+              expiration: new Date(Date.now() + 86400000), // 24 hours from now
             }
           );
 
@@ -491,10 +516,11 @@ Devvit.addCustomPostType({
 
       // If no words, generate dynamically
       try {
-        const subreddits = ["funny", "news", "technology", "anime"];
+        // const subreddits = ["funny", "news", "history", "interestingasfuck"];
 
-        // Select a random word
-        const subreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+        // // Select a random word
+        // const subreddit =
+        //   subreddits[Math.floor(Math.random() * subreddits.length)];
 
         console.log("Selected subreddit:", subreddit);
         const titles = await fetchRecentPostTitles(context, subreddit);
@@ -506,14 +532,16 @@ Devvit.addCustomPostType({
         // Store remaining words in Redis for future use
         await context.redis.set(
           `subwords_${context.postId}_all_words`,
-          generatedWords.slice(10).join(","), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          generatedWords.slice(10).join(","),
+          {
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           }
         );
         await context.redis.set(
           `subwords_${context.postId}_total_words`,
-          generatedWords.join(","), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          generatedWords.join(","),
+          {
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           }
         );
 
@@ -527,36 +555,14 @@ Devvit.addCustomPostType({
             userCount: 0,
           }));
 
-        // Add "End Story" cell from round 3 onwards
-        // const gameRoundKey = `subwords_${context.postId}_game_round`;
-        // const currentRound = parseInt(
-        //   (await context.redis.get(gameRoundKey)) || "1"
-        // );
-
-        // if (currentRound >= 3) {
-        //   cellsWithCounts.push({
-        //     word: 'END STORY',
-        //     userCount: 0
-        //   });
-        // }
-
         // Store initial words in Redis
         await context.redis.set(
           `subwords_${context.postId}`,
-          initialWords.join(","), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+          initialWords.join(","),
+          {
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           }
         );
-
-        // Check if we have enough words
-        // if (cellsWithCounts.length === 0) {
-        //   // Game over scenario: no more words available
-        //   await context.redis.set(
-        //     `subwords_${context.postId}_game_status`,
-        //     "GAME_OVER"
-        //   );
-        //   return [{ word: "GAME OVER", userCount: 0 }];
-        // }
 
         return cellsWithCounts;
       } catch (error) {
@@ -576,7 +582,7 @@ Devvit.addCustomPostType({
         (await context.redis.get(`subwords_${context.postId}_story`)) || "";
       return redisStory;
     });
- 
+
     // Set up periodic word voting check
 
     const [webviewVisible, setWebviewVisible] = useState(false);
@@ -655,8 +661,9 @@ Devvit.addCustomPostType({
 
             await context.redis.set(
               `subwords_${context.postId}_${username}_canVote`,
-              "false", {
-                expiration: new Date(Date.now() + 86400000) // 24 hours from now
+              "false",
+              {
+                expiration: new Date(Date.now() + 86400000), // 24 hours from now
               }
             );
             console.log(
@@ -674,58 +681,64 @@ Devvit.addCustomPostType({
           }
 
           break;
-        case "restartGame":
-          // Reset game state
-          await context.redis.del(`subwords_${context.postId}`);
-          await context.redis.del(`subwords_${context.postId}_all_words`);
-          await context.redis.del(`subwords_${context.postId}_story`);
-          await context.redis.del(`subwords_${context.postId}_game_status`);
-          await context.redis.del(`subwords_${context.postId}_game_round`);
+        // case "restartGame":
+        //   // Reset game state
+        //   await context.redis.del(`subwords_${context.postId}`);
+        //   await context.redis.del(`subwords_${context.postId}_all_words`);
+        //   await context.redis.del(`subwords_${context.postId}_story`);
+        //   await context.redis.del(`subwords_${context.postId}_game_status`);
+        //   await context.redis.del(`subwords_${context.postId}_game_round`);
 
-          // Regenerate words
-          const titles = await fetchRecentPostTitles(context, "funny");
-          const generatedWords = await generateWordsFromTitles(context, titles);
+        //   // Regenerate words
+        //   const titles = await fetchRecentPostTitles(context, "funny");
+        //   const generatedWords = await generateWordsFromTitles(context, titles);
 
-          const initialWords = generatedWords.slice(0, 10);
-          await context.redis.set(
-            `subwords_${context.postId}_all_words`,
-            generatedWords.slice(10).join(","), {
-              expiration: new Date(Date.now() + 86400000) // 24 hours from now
-            }
-          );
+        //   const initialWords = generatedWords.slice(0, 10);
+        //   await context.redis.set(
+        //     `subwords_${context.postId}_all_words`,
+        //     generatedWords.slice(10).join(","),
+        //     {
+        //       expiration: new Date(Date.now() + 86400000), // 24 hours from now
+        //     }
+        //   );
 
-          const cellsWithCounts: WordData[] = initialWords
-            .filter(
-              (word: string | undefined): word is string =>
-                word !== undefined && word.trim() !== ""
-            )
-            .map((word) => ({
-              word,
-              userCount: 0,
-            }));
+        //   const cellsWithCounts: WordData[] = initialWords
+        //     .filter(
+        //       (word: string | undefined): word is string =>
+        //         word !== undefined && word.trim() !== ""
+        //     )
+        //     .map((word) => ({
+        //       word,
+        //       userCount: 0,
+        //     }));
 
-          await context.redis.set(
-            `subwords_${context.postId}`,
-            initialWords.join(","), {
-              expiration: new Date(Date.now() + 86400000) // 24 hours from now
-            }
-          );
-          await context.redis.set(`subwords_${context.postId}_game_round`, "1", {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
-          });
+        //   await context.redis.set(
+        //     `subwords_${context.postId}`,
+        //     initialWords.join(","),
+        //     {
+        //       expiration: new Date(Date.now() + 86400000), // 24 hours from now
+        //     }
+        //   );
+        //   await context.redis.set(
+        //     `subwords_${context.postId}_game_round`,
+        //     "1",
+        //     {
+        //       expiration: new Date(Date.now() + 86400000), // 24 hours from now
+        //     }
+        //   );
 
-          // Notify webview with new game state
-          context.ui.webView.postMessage("myWebView", {
-            type: "initialData",
-            data: {
-              username: username,
-              currentCells: cellsWithCounts,
-              story: "",
-              gameRound: 1,
-              timeRemaining: 30, // Reset timer to 30 seconds
-            },
-          });
-          break;
+        //   // Notify webview with new game state
+        //   context.ui.webView.postMessage("myWebView", {
+        //     type: "initialData",
+        //     data: {
+        //       username: username,
+        //       currentCells: cellsWithCounts,
+        //       story: "",
+        //       gameRound: 1,
+        //       timeRemaining: 30,
+        //     },
+        //   });
+        //   break;
         case "saveCells":
           // Process only the newly selected cells
           const existingCellsStr =
@@ -760,11 +773,11 @@ Devvit.addCustomPostType({
                 : voteCount;
 
               await context.redis.set(key, updatedUserCount.toString(), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
-          });
+                expiration: new Date(Date.now() + 86400000), // 24 hours from now
+              });
               await context.redis.set(voteKey, updatedVoteCount.toString(), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
-          });
+                expiration: new Date(Date.now() + 86400000), // 24 hours from now
+              });
 
               return {
                 word,
@@ -830,8 +843,9 @@ Devvit.addCustomPostType({
         case "resetCanVote":
           await context.redis.set(
             `subwords_${context.postId}_${username}_canVote`,
-            "true", {
-              expiration: new Date(Date.now() + 86400000) // 24 hours from now
+            "true",
+            {
+              expiration: new Date(Date.now() + 86400000), // 24 hours from now
             }
           );
           console.log(`setting the vote count value of ${username} to true`);
@@ -866,7 +880,7 @@ Devvit.addCustomPostType({
           );
           const newVoteCount = currentVotes + 1;
           await context.redis.set(voteKey, newVoteCount.toString(), {
-            expiration: new Date(Date.now() + 86400000) // 24 hours from now
+            expiration: new Date(Date.now() + 86400000), // 24 hours from now
           });
 
           console.log("Word voted:", {
@@ -889,8 +903,9 @@ Devvit.addCustomPostType({
     const onStartGame = async () => {
       await context.redis.set(
         `subwords_${context.postId}_${username}_canVote`,
-        "true", {
-          expiration: new Date(Date.now() + 86400000) // 24 hours from now
+        "true",
+        {
+          expiration: new Date(Date.now() + 86400000), // 24 hours from now
         }
       );
       const initialVoteStatusCheck = await context.redis.get(
@@ -930,7 +945,11 @@ Devvit.addCustomPostType({
         const currentRound = parseInt(
           (await context.redis.get(gameRoundKey)) || "1"
         );
+        const fontUrl = await context.assets.getURL("ARCADECLASSIC.TTF");
+        console.log("font url is: ", fontUrl);
 
+        const timerUrl = await context.assets.getURL("timergif.gif");
+        console.log("bg url is: ", timerUrl);
         context.ui.webView.postMessage("myWebView", {
           type: "initialData",
           data: {
@@ -939,11 +958,13 @@ Devvit.addCustomPostType({
             story: story,
             gameRound: currentRound,
             timeRemaining: 30, // Add time remaining
+            fontUrl: fontUrl,
+            timerUrl: timerUrl,
+            subreddit: subreddit,
           },
         });
       }
     };
-
     return (
       <vstack grow padding="small">
         <vstack
@@ -951,10 +972,46 @@ Devvit.addCustomPostType({
           height={webviewVisible ? "0%" : "100%"}
           alignment="middle center"
         >
-          <text size="xlarge" weight="bold">
-            SubWords
-          </text>
-          <button onPress={onStartGame}>Start</button>
+          <zstack width="100%" height="100%">
+            <image
+              url="bgsubstory.png"
+              imageWidth={100}
+              imageHeight={100}
+              width="100%"
+              height="100%"
+            />
+            <vstack alignment="middle center" width="100%" height="100%">
+              <spacer height="60%" />
+              {status === "GAME_OVER" ? (
+                <vstack backgroundColor="#F0FFFF" border="thick" borderColor="#00FFFF" cornerRadius="medium" padding="small" >
+                <text 
+                wrap
+                size="xxlarge"
+                weight="bold"
+                color="black"
+                alignment="center"
+                width="100%" 
+                style="heading"
+                outline="thick"                
+                >
+                    Game Over - Final Story{'\n\n'}
+                    {story}
+                </text>
+                </vstack>
+              ) : (
+                <button
+                  onPress={onStartGame}
+                  appearance="success"
+                  size="large"
+                  icon="play"
+                  textColor="white"
+                >
+                  Start Game
+                </button>
+              )}
+              <spacer grow />
+            </vstack>
+          </zstack>
         </vstack>
         <vstack grow={webviewVisible} height={webviewVisible ? "100%" : "0%"}>
           <vstack
